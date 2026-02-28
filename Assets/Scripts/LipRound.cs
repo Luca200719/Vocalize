@@ -15,48 +15,53 @@ public class LipWidthSlider : MonoBehaviour {
     [Tooltip("Spread at slider 1 (wide)")]
     public float maxSpread = 3f;
 
-    [Header("Tongue Y Scale (optional)")]
-    [Tooltip("Leave empty to skip tongue Y scaling")]
+    [Header("Tongue Width (optional)")]
+    [Tooltip("Leave empty to skip tongue width scaling")]
     public TongueMeshGenerator tongueGenerator;
 
-    [Tooltip("Tongue tip Y when lip is at minimum spread")]
-    public float tongueTipYMin = 0.1f;
+    [Tooltip("Tongue half-width when lip is at minimum spread (narrow)")]
+    public float tongueHalfWidthMin = 0.1f;
 
-    [Tooltip("Tongue tip Y when lip is at maximum spread")]
-    public float tongueTipYMax = 0.5f;
+    [Tooltip("Tongue half-width when lip is at maximum spread (wide)")]
+    public float tongueHalfWidthMax = 0.4f;
 
-    // Base X centre is the midpoint of left and right — spread outward from here
-    float BaseCentreX() => (lipGenerator.leftPoint.x + lipGenerator.rightPoint.x) * 0.5f;
+    private Vector3 centreLocal;
+    private Vector3 spreadDir;
+    private Vector3 tongueCentreLocal;
+    private Vector3 tongueSpreadDir;
 
     void Start() {
         if (slider == null || lipGenerator == null) return;
 
-        float currentSpread = Mathf.Abs(lipGenerator.rightPoint.x - BaseCentreX());
+        centreLocal = (lipGenerator.leftPoint + lipGenerator.rightPoint) * 0.5f;
+        Vector3 toRight = lipGenerator.rightPoint - centreLocal;
+        spreadDir = toRight.normalized;
+
+        float currentSpread = toRight.magnitude;
         float t = Mathf.InverseLerp(minSpread, maxSpread, currentSpread);
         slider.value = Mathf.Clamp01(t);
+
+        // Cache tongue spread direction too
+        if (tongueGenerator != null) {
+            tongueCentreLocal = (tongueGenerator.baseLeft + tongueGenerator.baseRight) * 0.5f;
+            tongueSpreadDir = (tongueGenerator.baseRight - tongueCentreLocal).normalized;
+        }
 
         slider.onValueChanged.AddListener(OnSliderChanged);
     }
 
     void OnSliderChanged(float value) {
+        // Lip spreads wider as value increases
         float spread = Mathf.Lerp(minSpread, maxSpread, value);
-        float centre = BaseCentreX();
-
-        Vector3 left = lipGenerator.leftPoint;
-        Vector3 right = lipGenerator.rightPoint;
-
-        // Spread outward from centre, not from zero
-        left.x = centre - spread;
-        right.x = centre + spread;
-
-        lipGenerator.leftPoint = left;
-        lipGenerator.rightPoint = right;
+        lipGenerator.leftPoint = centreLocal - spreadDir * spread;
+        lipGenerator.rightPoint = centreLocal + spreadDir * spread;
         lipGenerator.GenerateMesh();
 
         if (tongueGenerator != null) {
-            Vector3 tip = tongueGenerator.tipPoint;
-            tip.y = Mathf.Lerp(tongueTipYMin, tongueTipYMax, value);
-            tongueGenerator.tipPoint = tip;
+            // Tongue gets narrower as lip gets wider — invert the value
+            float tongueHalfWidth = Mathf.Lerp(tongueHalfWidthMax, tongueHalfWidthMin, value);
+            tongueGenerator.baseLeft = tongueCentreLocal - tongueSpreadDir * tongueHalfWidth;
+            tongueGenerator.baseRight = tongueCentreLocal + tongueSpreadDir * tongueHalfWidth;
             tongueGenerator.GenerateMesh();
         }
     }

@@ -90,9 +90,10 @@ public class MouthAI : MonoBehaviour {
     void Reset() {
         submitted = false;
 
-        jawOpenSlider.value = 0.1f;
-        lipRoundSlider.value = 0.1f;
-        tongueHeightSlider.value = 0.1f;
+        jawOpenSlider.value = 1f;
+        lipRoundSlider.value = 1f;
+        tongueHeightSlider.value = 1f;
+
 
         jawOpenSlider.interactable = true;
         lipRoundSlider.interactable = true;
