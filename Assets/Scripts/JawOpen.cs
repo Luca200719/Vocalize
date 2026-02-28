@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class LipTopPointSlider : MonoBehaviour {
+public class JawOpen : MonoBehaviour {
     [Tooltip("Reference to the LipMeshGenerator component")]
     public LipMeshGenerator lipGenerator;
 
@@ -12,9 +12,19 @@ public class LipTopPointSlider : MonoBehaviour {
     public float minY = 0f;
     public float maxY = 1f;
 
-    [Header("Thickness Range")]
-    public float minThickness = 0.01f;
-    public float maxThickness = 0.3f;
+    [Header("Thickness Range (optional)")]
+    [Tooltip("Leave both at 0 to skip thickness animation")]
+    public float minThickness = 0f;
+    public float maxThickness = 0f;
+
+    [Header("Tongue (optional)")]
+    [Tooltip("Leave empty to skip tongue control")]
+    public TongueMeshGenerator tongueGenerator;
+
+    public float tongueTipYClosed = 0.1f;
+    public float tongueTipYOpen = -0.3f;
+    public float tongueBulgeClosed = 0.1f;
+    public float tongueBulgeOpen = 0.5f;
 
     void Start() {
         if (slider == null || lipGenerator == null) return;
@@ -26,15 +36,28 @@ public class LipTopPointSlider : MonoBehaviour {
     }
 
     void OnSliderChanged(float value) {
-        // Move top point Y
+        if (lipGenerator == null) return;
+
+        // Move lip top point Y
         Vector3 top = lipGenerator.topPoint;
         top.y = Mathf.Lerp(minY, maxY, value);
         lipGenerator.topPoint = top;
 
-        // Animate thickness alongside it
-        lipGenerator.centerThickness = Mathf.Lerp(minThickness, maxThickness, value);
+        // Only animate thickness if a range has been set
+        if (minThickness != 0f || maxThickness != 0f)
+            lipGenerator.centerThickness = Mathf.Lerp(minThickness, maxThickness, value);
 
         lipGenerator.GenerateMesh();
+
+        // Only drive tongue if a generator has been assigned
+        if (tongueGenerator != null) {
+            Vector3 tip = tongueGenerator.tipPoint;
+            tip.y = Mathf.Lerp(tongueTipYClosed, tongueTipYOpen, value);
+            tongueGenerator.tipPoint = tip;
+
+            tongueGenerator.bulge = Mathf.Lerp(tongueBulgeClosed, tongueBulgeOpen, value);
+            tongueGenerator.GenerateMesh();
+        }
     }
 
     void OnDestroy() {
